@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+websockets
+pydantic_settings
+python-dotenv
+sqlalchemy[asyncio]
+asyncpg
+psycopg2-binary
+alembic
