@@ -7,3 +7,7 @@ sqlalchemy[asyncio]
 asyncpg
 psycopg2-binary
 alembic
+pydantic[email]
+argon2-cffi
+python-jose
+python-multipart
