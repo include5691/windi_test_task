@@ -1,3 +1,6 @@
+import logging
+logging.basicConfig(level=logging.INFO)
+
 import asyncio
 from fastapi import FastAPI
 from app.core import settings
