@@ -5,5 +5,5 @@ class Chat(Base):
     __tablename__ = "chats"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, index=True)
-    is_group = Column(Boolean)
+    name = Column(String)
+    is_group = Column(Boolean, nullable=False)

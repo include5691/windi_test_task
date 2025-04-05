@@ -32,7 +32,7 @@ def upgrade() -> None:
     op.create_table('chats',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=True),
-    sa.Column('is_group', sa.Boolean(), nullable=True),
+    sa.Column('is_group', sa.Boolean(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('users',
@@ -70,7 +70,8 @@ def upgrade() -> None:
     op.bulk_insert(
         chats_table,
         [{
-            'name': f"Chat {i+1}"
+            'name': f"Chat {i+1}",
+            'is_group': False,
         } for i in range((len(TEST_DATA)) - 1)]
     )
     op.bulk_insert(
