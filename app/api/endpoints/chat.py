@@ -151,6 +151,11 @@ async def add_user_to_chat(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found"
         )
+    if chat.is_group is False:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot add users to a private chat",
+        )
 
     # Check if the user exists
     stmt = select(User).where(User.id == user_id)

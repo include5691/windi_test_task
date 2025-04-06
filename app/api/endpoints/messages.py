@@ -88,8 +88,27 @@ async def websocket_endpoint(
                 except ValidationError as e:
                     logging.error(f"Validation error: {e}")
                     raise WebSocketException(
-                        code=status.WS_1007_INVALID_PAYLOAD,
+                        code=status.WS_1007_INVALID_FRAME_PAYLOAD_DATA,
                         reason="Invalid message format",
+                    )
+                chat_stmt = select(Chat).where(Chat.id == message_in.chat_id)
+                result = await session.execute(chat_stmt)
+                chat = result.scalars().first()
+                if not chat:
+                    raise WebSocketException(
+                        code=status.WS_1007_INVALID_FRAME_PAYLOAD_DATA,
+                        reason="Chat not found",
+                    )
+                chat_users_stmt = select(UserChat).where(
+                    UserChat.chat_id == chat.id,
+                    UserChat.user_id == user_id,
+                )
+                result = await session.execute(chat_users_stmt)
+                chat_user = result.scalar_one_or_none()
+                if not chat_user:
+                    raise WebSocketException(
+                        code=status.WS_1007_INVALID_FRAME_PAYLOAD_DATA,
+                        reason="You are not a member of this chat",
                     )
                 double_stmt = select(Message).where(
                     Message.client_message_id == message_in.client_message_id
@@ -100,14 +119,6 @@ async def websocket_endpoint(
                     raise WebSocketException(
                         code=status.WS_1008_POLICY_VIOLATION,
                         reason=f"Duplicate message detected (Client ID: {message_in.client_message_id}).",
-                    )
-                chat_stmt = select(Chat).where(Chat.id == message_in.chat_id)
-                result = await session.execute(chat_stmt)
-                chat = result.scalars().first()
-                if not chat:
-                    raise WebSocketException(
-                        code=status.WS_1007_INVALID_PAYLOAD,
-                        reason="Chat not found",
                     )
                 message = Message(**message_in.model_dump())
                 session.add(message)
@@ -128,7 +139,7 @@ async def websocket_endpoint(
                 message_id = payload.get("id")
                 if not message_id:
                     raise WebSocketException(
-                        code=status.WS_1007_INVALID_PAYLOAD,
+                        code=status.WS_1007_INVALID_FRAME_PAYLOAD_DATA,
                         reason="Message ID is required",
                     )
                 read_stmt = select(Message).where(Message.id == message_id)
