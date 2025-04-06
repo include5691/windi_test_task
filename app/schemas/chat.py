@@ -7,7 +7,7 @@ class ChatBase(BaseModel):
 
 class ChatCreate(ChatBase):
 
-    recipient_id: int = Field(..., title="ID of the recipient user")
+    recipient_id: int | None = Field(None, title="ID of the recipient user")
 
 class ChatRead(ChatBase):
     id: int = Field(..., title="ID of the chat")
