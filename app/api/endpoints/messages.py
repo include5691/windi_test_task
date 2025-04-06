@@ -50,22 +50,6 @@ message_router = APIRouter(tags=["Message"])
                 }
             },
         },
-        status.HTTP_400_BAD_REQUEST: {
-            "description": "Invalid request parameters",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": [
-                            {
-                                "loc": ["query", "limit"],
-                                "msg": "value is not a valid integer",
-                                "type": "type_error.integer",
-                            }
-                        ]
-                    }
-                }
-            },
-        },
         status.HTTP_401_UNAUTHORIZED: {
             "description": "Not authenticated",
             "content": {
