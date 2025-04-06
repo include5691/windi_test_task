@@ -1,6 +1,6 @@
 from ..base import Base
 import time
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, UUID
 
 class Message(Base):
     __tablename__ = "messages"
@@ -11,3 +11,4 @@ class Message(Base):
     text = Column(String, nullable=False)
     timestamp = Column(Integer, nullable=False, default=time.time)
     is_read = Column(Boolean, default=False)
+    client_message_id = Column(UUID, nullable=False, unique=True)

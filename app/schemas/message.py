@@ -1,3 +1,4 @@
+import uuid
 from pydantic import BaseModel, Field
 from enum import StrEnum
 
@@ -11,6 +12,9 @@ class MessageBase(BaseModel):
     sender_id: int = Field(..., description="Unique identifier for the sender")
     text: str = Field(
         ..., min_length=1, max_length=500, description="Content of the message"
+    )
+    client_message_id: uuid.UUID = Field(
+        ..., description="Unique identifier for the message from the client"
     )
 
 

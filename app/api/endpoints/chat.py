@@ -84,7 +84,7 @@ async def create_chat(
     existing_chat = result_existing.scalars().first()
     if existing_chat:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,  # 409 Conflict - подходящий статус
+            status_code=status.HTTP_409_CONFLICT,
             detail=f"A chat between you and user {recipient.id} already exists (ID: {existing_chat.id}).",
         )
 
@@ -125,8 +125,24 @@ async def websocket_endpoint(
                 except ValidationError as e:
                     logging.error(f"Validation error: {e}")
                     raise WebSocketException(
-                        code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                        detail="Invalid message format",
+                        code=status.WS_1007_INVALID_PAYLOAD,
+                        reason="Invalid message format",
+                    )
+                double_stmt = select(Message).where(Message.client_message_id == message_in.client_message_id)
+                result = await session.execute(double_stmt)
+                existing_message = result.scalars().first()
+                if existing_message:
+                    raise WebSocketException(
+                        code=status.WS_1008_POLICY_VIOLATION,
+                        reason=f"Duplicate message detected (Client ID: {message_in.client_message_id}).",
+                    )
+                chat_stmt = select(Chat).where(Chat.id == message_in.chat_id)
+                result = await session.execute(chat_stmt)
+                chat = result.scalars().first()
+                if not chat:
+                    raise WebSocketException(
+                        code=status.WS_1007_INVALID_PAYLOAD,
+                        reason="Chat not found",
                     )
                 message = Message(**message_in.model_dump())
                 session.add(message)
@@ -139,7 +155,7 @@ async def websocket_endpoint(
                 result = await session.execute(get_users_stmt)
                 user_chats = result.scalars().all()
                 user_ids = [user_chat.user_id for user_chat in user_chats]
-                await ws_manager.send_to_chat(message_out.model_dump(), user_ids)
+                await ws_manager.send_to_chat(message_out.model_dump_json(), user_ids)
                 logging.info(
                     f"Message sent from user {user_id} to chat {message.chat_id}: {message.text}"
                 )
@@ -147,21 +163,21 @@ async def websocket_endpoint(
                 message_id = payload.get("id")
                 if not message_id:
                     raise WebSocketException(
-                        code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                        detail="Message ID is required",
+                        code=status.WS_1007_INVALID_PAYLOAD,
+                        reason="Message ID is required",
                     )
                 read_stmt = select(Message).where(Message.id == message_id)
                 result = await session.execute(read_stmt)
                 message = result.scalars().first()
                 if not message:
                     raise WebSocketException(
-                        code=status.HTTP_404_NOT_FOUND,
-                        detail="Message not found",
+                        code=status.WS_1008_POLICY_VIOLATION,
+                        reason="Message not found",
                     )
                 if not message.is_read:
                     message.is_read = True
                     await session.commit()
-                    await ws_manager.send_to_user(message=MessageReadNotification.model_validate(message).model_dump(), user_id=message.sender_id)
+                    await ws_manager.send_to_user(message=MessageReadNotification.model_validate(message).model_dump_json(), user_id=message.sender_id)
                     logging.info(
                         f"Message {message.id} marked as read by user {user_id} and notified sender {message.sender_id}"
                     )

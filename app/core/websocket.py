@@ -21,11 +21,10 @@ class WebSocketManager:
                 if not user_connections:
                     del self.active_connections[user_id]
 
-    async def send_to_chat(self, message: dict, user_ids: list[int]):
+    async def send_to_chat(self, message: str, user_ids: list[int]):
         """
         Sends a message to all users in a chat. Send yourself as confirmation.
         """
-        message = json.dumps(message)
         for user_id in user_ids:
             if user_id in self.active_connections:
                 websockets = self.active_connections[user_id]
@@ -36,11 +35,10 @@ class WebSocketManager:
                         logging.error(f"Error sending message to user {user_id}: {e}. Removing connection.")
                         self.disconnect(connection, user_id)
     
-    async def send_to_user(self, message: dict, user_id: int):
+    async def send_to_user(self, message: str, user_id: int):
         """
         Sends a read notification to a specific user.
         """
-        message = json.dumps(message)
         if user_id in self.active_connections:
             websockets = self.active_connections[user_id]
             for connection in list(websockets):

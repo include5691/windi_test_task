@@ -1,8 +1,8 @@
-"""Add messages table
+"""Add client_message_id to check doubles
 
-Revision ID: 3e17bc856117
+Revision ID: 97aa79977725
 Revises: 33cbeeb9a81d
-Create Date: 2025-04-06 18:36:20.483456
+Create Date: 2025-04-06 20:38:18.061444
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '3e17bc856117'
+revision: str = '97aa79977725'
 down_revision: Union[str, None] = '33cbeeb9a81d'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -28,9 +28,11 @@ def upgrade() -> None:
     sa.Column('text', sa.String(), nullable=False),
     sa.Column('timestamp', sa.Integer(), nullable=False),
     sa.Column('is_read', sa.Boolean(), nullable=True),
+    sa.Column('client_message_id', sa.UUID(), nullable=False),
     sa.ForeignKeyConstraint(['chat_id'], ['chats.id'], ),
     sa.ForeignKeyConstraint(['sender_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('client_message_id')
     )
     # ### end Alembic commands ###
 

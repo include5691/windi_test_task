@@ -59,7 +59,7 @@ async def get_current_user_from_token(token: str, session: AsyncSession) -> User
             raise credentials_exception
     except JWTError as e:
         logging.error(f"JWTError decoding WebSocket token: {e}")
-        raise credentials_exception from e  # Передаем исходную ошибку для возможной отладки
+        raise credentials_exception from e 
     stmt = select(User).where(User.email == email)
     result = await session.execute(stmt)
     user = result.scalars().first()
