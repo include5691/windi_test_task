@@ -30,6 +30,65 @@ message_router = APIRouter(tags=["Message"])
     response_model=list[MessageResponse],
     status_code=status.HTTP_200_OK,
     summary="Get all messages in a chat",
+    description="Retrieve all messages in a chat with pagination support.",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "List of messages",
+            "content": {
+                "application/json": {
+                    "example": [
+                        {
+                            "id": 1,
+                            "text": "Hello, world!",
+                            "sender_id": 1,
+                            "chat_id": 1,
+                            "timestamp": 171234567890,
+                            "is_read": False,
+                            "client_message_id": "abc123",
+                        }
+                    ]
+                }
+            },
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Invalid request parameters",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": [
+                            {
+                                "loc": ["query", "limit"],
+                                "msg": "value is not a valid integer",
+                                "type": "type_error.integer",
+                            }
+                        ]
+                    }
+                }
+            },
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Not authenticated",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": [
+                            {
+                                "loc": ["authorization"],
+                                "msg": "Not authenticated",
+                                "type": "value_error",
+                            }
+                        ]
+                    }
+                }
+            },
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "You are not a member of this chat",
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Chat not found",
+        },
+    },
 )
 async def get_messages(
     chat_id: int,

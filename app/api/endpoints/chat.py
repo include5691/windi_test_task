@@ -1,4 +1,3 @@
-import logging
 from fastapi import (
     APIRouter,
     Depends,
@@ -21,6 +20,33 @@ chat_router = APIRouter(prefix="/chats", tags=["Chat"])
     response_model=list[ChatRead],
     status_code=status.HTTP_200_OK,
     summary="Get all chats",
+    description="Get all chats for the current user.",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "List of chats",
+            "content": {
+                "application/json": {
+                    "example": [
+                        {
+                            "id": 1,
+                            "name": "Chat 1",
+                            "is_group": False,
+                            "last_message": None,
+                        },
+                        {
+                            "id": 2,
+                            "name": "Group Chat",
+                            "is_group": True,
+                            "last_message": None,
+                        },
+                    ]
+                }
+            },
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Unauthorized (e.g., invalid token)"
+        },
+    },
 )
 async def get_chats(
     current_user: User = Depends(get_current_user),
@@ -40,6 +66,34 @@ async def get_chats(
     response_model=ChatRead,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new chat",
+    description="Create a new chat with a recipient or as a group chat.",
+    responses={
+        status.HTTP_201_CREATED: {
+            "description": "Chat created successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 3,
+                        "name": "New Chat",
+                        "is_group": False,
+                        "last_message": None,
+                    }
+                }
+            },
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Bad Request (e.g., creating chat with self, missing recipient/group info)"
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Recipient not found (for private chats)"
+        },
+        status.HTTP_409_CONFLICT: {
+            "description": "Conflict (e.g., chat already exists, user already in chat)"
+        },
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "description": "Validation error in input data"
+        },
+    },
 )
 async def create_chat(
     chat_in: ChatCreate,
@@ -133,6 +187,26 @@ async def create_chat(
     "/{chat_id}/add-user",
     status_code=status.HTTP_200_OK,
     summary="Add user to chat",
+    description="Add a user to an existing chat.",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "User added to chat successfully",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "User added to chat successfully"}
+                }
+            },
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Bad Request (e.g., adding user to private chat)"
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Chat or user not found"
+        },
+        status.HTTP_409_CONFLICT: {
+            "description": "Conflict (e.g., user already in chat)"
+        },
+    },
 )
 async def add_user_to_chat(
     chat_id: int,
@@ -204,6 +278,23 @@ async def add_user_to_chat(
     "/{chat_id}/exit",
     status_code=status.HTTP_200_OK,
     summary="Exit a chat",
+    description="Exit a chat.",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "User removed from chat successfully",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "User removed from chat successfully"}
+                }
+            },
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Chat not found"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "You are not a member of this chat"
+        },
+    },
 )
 async def exit_chat(
     chat_id: int,

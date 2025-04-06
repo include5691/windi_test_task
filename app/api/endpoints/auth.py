@@ -8,35 +8,79 @@ from app.schemas import UserCreate, UserRead, Token
 from app.core.security import hash_password, verify_password, create_access_token
 from app.exceptions import UnauthorizedException
 
-auth_router = APIRouter()
+auth_router = APIRouter(tags=["Auth"])
 
-@auth_router.post("/register/", response_model=UserRead, status_code=status.HTTP_201_CREATED, summary="Register a new user")
+
+@auth_router.post(
+    "/register/",
+    response_model=UserRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new user",
+    description="Register a new user with email and password.",
+    responses={
+        status.HTTP_201_CREATED: {
+            "description": "User registered successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "email": "string",
+                        "name": "string",
+                    }
+                }
+            },
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Email already registered",
+        },
+    },
+)
 async def register_user(
-    user_in: UserCreate,
-    session: AsyncSession = Depends(get_async_session)
+    user_in: UserCreate, session: AsyncSession = Depends(get_async_session)
 ):
     stmt = select(User).where(User.email == user_in.email)
     result = await session.execute(stmt)
     user = result.scalars().first()
     if user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
     user = User(
         email=user_in.email,
         name=user_in.name,
-        hashed_password=hash_password(user_in.password)
+        hashed_password=hash_password(user_in.password),
     )
     session.add(user)
     await session.commit()
     await session.refresh(user)
     return user
 
-@auth_router.post("/token/", response_model=Token, summary="Generate access token")
+
+@auth_router.post(
+    "/token/",
+    response_model=Token,
+    summary="Generate access token",
+    description="Generate an access token using email and password.",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Access token generated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "access_token": "string",
+                        "token_type": "bearer",
+                    }
+                }
+            },
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Invalid credentials",
+        },
+    },
+)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
 ):
     stmt = select(User).where(User.email == form_data.username)
     result = await session.execute(stmt)
