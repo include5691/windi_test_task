@@ -11,10 +11,11 @@ from fastapi import (
 from sqlalchemy import select
 from sqlalchemy.orm import aliased
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import ValidationError
 from app.db.base import get_async_session
-from app.db.models import Chat, UserChat, User
+from app.db.models import Chat, UserChat, User, Message
 from app.api.deps import get_current_user, get_current_user_from_token
-from app.schemas import ChatRead, ChatCreate
+from app.schemas import ChatRead, ChatCreate, MessageCreate, MessageResponse, MessageReadNotification, WebSocketCommand
 from app.core.websocket import ws_manager
 
 chat_router = APIRouter(prefix="/chats", tags=["Chat"])
@@ -116,14 +117,54 @@ async def websocket_endpoint(
         logging.info(f"User {user_id} connected to WebSocket")
         while True:
             data = await websocket.receive_json()
-            logging.info(f"Received data from user {user_id}: {data}")
-            chat_id = data.get("chat_id")
-            text = data.get("text")
-            if not chat_id or not text:
-                raise WebSocketException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="chat_id and text are required",
+            command = data.get("command")
+            payload = data.get("payload")
+            if command == WebSocketCommand.SEND_MESSAGE:
+                try:
+                    message_in = MessageCreate(**payload, sender_id=user_id)
+                except ValidationError as e:
+                    logging.error(f"Validation error: {e}")
+                    raise WebSocketException(
+                        code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Invalid message format",
+                    )
+                message = Message(**message_in.model_dump())
+                session.add(message)
+                await session.commit()
+                await session.refresh(message)
+                message_out = MessageResponse.model_validate(message)
+                get_users_stmt = select(UserChat).where(
+                    UserChat.chat_id == message.chat_id
                 )
+                result = await session.execute(get_users_stmt)
+                user_chats = result.scalars().all()
+                user_ids = [user_chat.user_id for user_chat in user_chats]
+                await ws_manager.send_to_chat(message_out.model_dump(), user_ids)
+                logging.info(
+                    f"Message sent from user {user_id} to chat {message.chat_id}: {message.text}"
+                )
+            elif command == WebSocketCommand.READ_MESSAGE:
+                message_id = payload.get("id")
+                if not message_id:
+                    raise WebSocketException(
+                        code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Message ID is required",
+                    )
+                read_stmt = select(Message).where(Message.id == message_id)
+                result = await session.execute(read_stmt)
+                message = result.scalars().first()
+                if not message:
+                    raise WebSocketException(
+                        code=status.HTTP_404_NOT_FOUND,
+                        detail="Message not found",
+                    )
+                if not message.is_read:
+                    message.is_read = True
+                    await session.commit()
+                    await ws_manager.send_to_user(message=MessageReadNotification.model_validate(message).model_dump(), user_id=message.sender_id)
+                    logging.info(
+                        f"Message {message.id} marked as read by user {user_id} and notified sender {message.sender_id}"
+                    )
     except WebSocketDisconnect:
         logging.info(f"WebSocket disconnected for user {user_id}.")
         if user_id:
